@@ -1,6 +1,7 @@
 ﻿#include <iostream>
 #include <iomanip>
 #include <cstdio> // для remove()
+#include <limits> // для numeric_limits
 #include "Admin.h"
 #include "Payment.h"
 #include "Garbage.h"
@@ -77,40 +78,38 @@ void displayAdminTable() {
 
 // виводимо таблицю виплат
 void displayPaymentTable() {
-FILE * paymentsDB;
-fopen_s(&paymentsDB, "payments.bin", "rb");
-if (!paymentsDB) {
-    std::cerr << "Error: Could not open payments.bin for reading!" << std::endl;
-    return;
-}
+    FILE* paymentsDB;
+    fopen_s(&paymentsDB, "payments.bin", "rb");
+    if (!paymentsDB) {
+        std::cerr << "Error: Could not open payments.bin for reading!" << std::endl;
+        return;
+    }
 
-std::cout << "\nPayments Table:\n";
-std::cout << std::setw(5) << "ID" << std::setw(10) << "Admin ID" << std::setw(10) << "Size"
-    << std::setw(12) << "Month" << std::setw(15) << "Next Payment"
-    << std::setw(10) << "Deleted" << std::endl;
-std::cout << std::string(70, '-') << std::endl;
+    std::cout << "\nPayments Table:\n";
+    std::cout << std::setw(5) << "ID" << std::setw(10) << "Admin ID" << std::setw(10) << "Size"
+        << std::setw(12) << "Month" << std::setw(15) << "Next Payment"
+        << std::setw(10) << "Deleted" << std::endl;
+    std::cout << std::string(70, '-') << std::endl;
 
-Payment payment;
-int localId = 1;
+    Payment payment;
+    int localId = 1;
 
-while (fread(&payment, sizeof(Payment), 1, paymentsDB)) {
-    std::cout << std::setw(5) << localId
-        << std::setw(10) << payment.admin_id
-        << std::setw(10) << payment.size
-        << std::setw(12) << payment.month
-        << std::setw(15) << payment.next_local_address
-        << std::setw(10) << (payment.deleted ? "Yes" : "No") << std::endl;
-    localId++;
-}
+    while (fread(&payment, sizeof(Payment), 1, paymentsDB)) {
+        std::cout << std::setw(5) << localId
+            << std::setw(10) << payment.admin_id
+            << std::setw(10) << payment.size
+            << std::setw(12) << payment.month
+            << std::setw(15) << payment.next_local_address
+            << std::setw(10) << (payment.deleted ? "Yes" : "No") << std::endl;
+        localId++;
+    }
 
-fclose(paymentsDB);
+    fclose(paymentsDB);
 }
 
 // виводимо всі дані 
 void displayTable() {
-
     displayAdminTable();
-
     displayPaymentTable();
 }
 
@@ -118,7 +117,7 @@ int main() {
     initializeFiles();
 
     FILE* file;
-    if (fopen_s(&file, "adminGarbage.bin", "rb") == 0) { 
+    if (fopen_s(&file, "adminGarbage.bin", "rb") == 0) {
         loadAdminGarbageFromFile("adminGarbage.bin");
         fclose(file);
     }
@@ -151,8 +150,16 @@ int main() {
         std::cout << "13. Display payments (ut-s)\n";
         std::cout << "14. Exit (without cleanup)\n";
         std::cout << "15. Exit (with cleanup)\n";
+		std::cout << "16. Remove admin garbage\n";
+		std::cout << "17. Remove payment garbage\n";
         std::cout << "Choose an option: ";
-        std::cin >> choice;
+
+        if (!(std::cin >> choice)) {
+            std::cin.clear(); // clear the error flag
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // discard invalid input
+            std::cout << "Invalid input! Please enter a number.\n";
+            continue;
+        }
 
         switch (choice) {
         case 1: {
@@ -177,16 +184,21 @@ int main() {
         case 3: {
             int adminId;
             std::cout << "Enter admin ID to delete: ";
-            std::cin >> adminId;
+            if (!(std::cin >> adminId)) {
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                std::cout << "Invalid input! Please enter a number.\n";
+                break;
+            }
             Admin admin = getAdmin(adminId);
-			if (admin.deleted) {
-				std::cout << "Admin already deleted!\n";
-				break;
-			}
-			if (adminId < 0 || adminId > adminIden.size()) {
-				std::cout << "Admin does not exist\n";
-				break;
-			}
+            if (admin.deleted) {
+                std::cout << "Admin already deleted!\n";
+                break;
+            }
+            if (adminId < 0 || adminId > adminIden.size()) {
+                std::cout << "Admin does not exist\n";
+                break;
+            }
             deleteAdmin(adminId);
             std::cout << "Admin deleted!\n";
             break;
@@ -194,12 +206,17 @@ int main() {
         case 4: {
             int localId;
             std::cout << "Enter payment local ID to delete: ";
-            std::cin >> localId;
-			Payment payment = getPayment(localId);
-			if (payment.deleted) { 
-				std::cout << "Payment already deleted!\n";  
-				break;  
-			}
+            if (!(std::cin >> localId)) {
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                std::cout << "Invalid input! Please enter a number.\n";
+                break;
+            }
+            Payment payment = getPayment(localId);
+            if (payment.deleted) {
+                std::cout << "Payment already deleted!\n";
+                break;
+            }
             if (localId < 0 || localId > countPayments()) {
                 std::cout << "Payment does not exist\n";
                 break;
@@ -211,7 +228,12 @@ int main() {
         case 5: {
             int adminId;
             std::cout << "Enter admin ID to look at: ";
-            std::cin >> adminId;
+            if (!(std::cin >> adminId)) {
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                std::cout << "Invalid input! Please enter a number.\n";
+                break;
+            }
             Admin admin = getAdmin(adminId);
             if (admin.deleted) {
                 std::cout << "Admin already deleted!\n";
@@ -233,7 +255,12 @@ int main() {
         case 6: {
             int adminId;
             std::cout << "Enter admin ID, whose payment you want to look at: ";
-            std::cin >> adminId;
+            if (!(std::cin >> adminId)) {
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                std::cout << "Invalid input! Please enter a number.\n";
+                break;
+            }
             Admin admin = getAdmin(adminId);
             if (admin.deleted) {
                 std::cout << "Admin already deleted!\n";
@@ -244,14 +271,19 @@ int main() {
                 break;
             }
             std::cout << "Number of admin's payments: " << admin.num_of_payments << "\n";
-			if (admin.num_of_payments == 0) {
-				std::cout << "No payments for this admin\n";
-				break;
-			}
+            if (admin.num_of_payments == 0) {
+                std::cout << "No payments for this admin\n";
+                break;
+            }
             std::cout << "Enter number of admin's payment you want to look at: ";
             int veryLocalId;
-            std::cin >> veryLocalId;
-            if ( veryLocalId > admin.num_of_payments || veryLocalId < 0) {
+            if (!(std::cin >> veryLocalId)) {
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                std::cout << "Invalid input! Please enter a number.\n";
+                break;
+            }
+            if (veryLocalId > admin.num_of_payments || veryLocalId < 0) {
                 std::cout << "No payments for this admin\n";
                 break;
             }
@@ -273,7 +305,12 @@ int main() {
         case 7: {
             int adminId;
             std::cout << "Enter admin ID to change: ";
-            std::cin >> adminId;
+            if (!(std::cin >> adminId)) {
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                std::cout << "Invalid input! Please enter a number.\n";
+                break;
+            }
             Admin admin = getAdmin(adminId);
             if (admin.deleted) {
                 std::cout << "Admin already deleted!\n";
@@ -285,7 +322,12 @@ int main() {
             }
             int field;
             std::cout << "Enter 1 to change name or 2 to change experience : ";
-            std::cin >> field;
+            if (!(std::cin >> field)) {
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                std::cout << "Invalid input! Please enter a number.\n";
+                break;
+            }
             if (field == 1) {
                 char altered_name[40];
 
@@ -298,7 +340,12 @@ int main() {
             else if (field == 2) {
                 int altered_experience;
                 std::cout << "Enter new experience: ";
-                std::cin >> altered_experience;
+                if (!(std::cin >> altered_experience)) {
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    std::cout << "Invalid input! Please enter a number.\n";
+                    break;
+                }
                 admin.experience = altered_experience;
                 writeAdmin(admin, adminId - 1);
             }
@@ -311,24 +358,39 @@ int main() {
         case 8: {
             int localId;
             std::cout << "Enter payment ID to change: ";
-            std::cin >> localId;
-			Payment payment = getPayment(localId);
-			if (payment.deleted) {
-				std::cout << "Payment already deleted!\n";
-				break;
-			}
-			if (localId < 0 || localId > countPayments()) {
-				std::cout << "Payment does not exist\n";
-				break;
-			}
+            if (!(std::cin >> localId)) {
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                std::cout << "Invalid input! Please enter a number.\n";
+                break;
+            }
+            Payment payment = getPayment(localId);
+            if (payment.deleted) {
+                std::cout << "Payment already deleted!\n";
+                break;
+            }
+            if (localId < 0 || localId > countPayments()) {
+                std::cout << "Payment does not exist\n";
+                break;
+            }
             int field;
             std::cout << "Enter 1 to change size or 2 to change month : ";
-            std::cin >> field;
+            if (!(std::cin >> field)) {
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                std::cout << "Invalid input! Please enter a number.\n";
+                break;
+            }
             if (field == 1) {
                 int altered_size;
 
                 std::cout << "Enter new size: ";
-                std::cin >> altered_size;
+                if (!(std::cin >> altered_size)) {
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    std::cout << "Invalid input! Please enter a number.\n";
+                    break;
+                }
                 payment.size = altered_size;
                 writePayment(payment, localId - 1);
 
@@ -346,35 +408,40 @@ int main() {
             break;
         }
 
-        case 9: 
+        case 9:
             std::cout << countAdmins() << std::endl;
             break;
         case 10: {
             std::cout << countPayments() << std::endl;
             std::cout << "Enter admin's Id to count their payments: ";
             int adminId;
-            std::cin >> adminId;
+            if (!(std::cin >> adminId)) {
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                std::cout << "Invalid input! Please enter a number.\n";
+                break;
+            }
             Admin admin = getAdmin(adminId);
-			if (admin.deleted) {
-				std::cout << "Admin already deleted!\n";
-				break;
-			}
-			if (adminId < 0 || adminId > adminIden.size()) {
-				std::cout << "Admin does not exist\n";
-				break;
-			}
+            if (admin.deleted) {
+                std::cout << "Admin already deleted!\n";
+                break;
+            }
+            if (adminId < 0 || adminId > adminIden.size()) {
+                std::cout << "Admin does not exist\n";
+                break;
+            }
             std::cout << "Admin's payments: " << admin.num_of_payments << std::endl;
-			break;
+            break;
         }
         case 11:
             displayTable();
             break;
-		case 12:
-			displayAdminTable();
-			break;
-		case 13:
-			displayPaymentTable();
-			break;
+        case 12:
+            displayAdminTable();
+            break;
+        case 13:
+            displayPaymentTable();
+            break;
         case 14:
             std::cout << "Saving garbage and exiting...\n";
             writeAdminGarbageToFile("adminGarbage.bin");
@@ -385,11 +452,18 @@ int main() {
             std::cout << "Exiting and cleaning up files...\n";
             cleanupFiles();
             return 0;
+        case 16:
+            removeAdminGarbage();
+            std::cout << "Admin arbage removed and indexes updated successfully!\n";
+            break;
+        case 17:
+            removePaymentGarbage();
+            std::cout << "Payment arbage removed and indexes updated successfully!\n";
+            break;
         default:
             std::cout << "Unknown option! Try again.\n";
-        
+
         }
     }
 }
-
 

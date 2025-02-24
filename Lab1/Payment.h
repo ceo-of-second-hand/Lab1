@@ -18,4 +18,8 @@ Payment getPayment(int localId);
 void writePayment(Payment& payment, int position);
 void deletePayment(int localId);
 int countPayments(); // підрахунок виплат (для main)
+void fullyRemovePayment(int localId); // повне видалення виплати
+void updatePaymentIndexes();
+void updateConnectedIndexesPayment(int localId);
+void updatePaymentAfterCompleteDeletion(int localId);
 

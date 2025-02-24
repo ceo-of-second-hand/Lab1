@@ -3,6 +3,8 @@
 #include <iostream>
 #include <vector>  
 #include <cstdio>  //  fopen, fseek, fread, fwrite
+#include "Admin.h"
+#include "Payment.h"
 
 // структурf для сміттєвого простору
 struct GarbageSpace {
@@ -25,3 +27,7 @@ void loadAdminGarbageFromFile(const std::string& filename);
 
 void writePayoutGarbageToFile(const std::string& filename);
 void loadPayoutGarbageFromFile(const std::string& filename);
+
+void removeAdminGarbage();
+void removePaymentGarbage();
+void updateIndexes();

@@ -184,3 +184,179 @@ int countAdmins() {
     fclose(adminDB);
     return count;
 }
+
+void fullyRemoveAdmin(int adminId) {
+    // Відкриваємо оригінальний файл адміністраторів для читання
+    FILE* adminDB = nullptr;
+    fopen_s(&adminDB, "admins.bin", "rb");
+
+    if (!adminDB) {
+        std::cerr << "Error: Could not open admins.bin for reading!" << std::endl;
+        return;
+    }
+
+    // Відкриваємо тимчасовий файл для запису
+    FILE* tempDB = nullptr;
+    fopen_s(&tempDB, "temp_admins.bin", "wb");
+
+    if (!tempDB) {
+        std::cerr << "Error: Could not create temporary file!" << std::endl;
+        fclose(adminDB);
+        return;
+    }
+
+    Admin admin;
+    int currentId = 1; // Лічильник для нових ID
+
+    // Копіюємо всі записи, крім видаленого, у тимчасовий файл
+    while (fread(&admin, sizeof(Admin), 1, adminDB)) {
+        if (currentId != adminId) { // Пропускаємо запис, який потрібно видалити
+            fwrite(&admin, sizeof(Admin), 1, tempDB);
+        }
+        currentId++;
+    }
+
+    // Закриваємо файли
+    fclose(adminDB);
+    fclose(tempDB);
+
+    // Видаляємо оригінальний файл
+    if (remove("admins.bin") != 0) {
+        std::cerr << "Error: Could not delete original admins.bin file!" << std::endl;
+        return;
+    }
+
+    // Перейменовуємо тимчасовий файл у оригінальний
+    if (rename("temp_admins.bin", "admins.bin") != 0) {
+        std::cerr << "Error: Could not rename temporary file to admins.bin!" << std::endl;
+        return;
+    }
+
+    // Видаляємо індекс з контейнера adminIden
+    auto it = std::find_if(adminIden.begin(), adminIden.end(),
+        [adminId](const AdminIdentificator& id) { return id.adminId == adminId; });
+
+    if (it != adminIden.end()) {
+        adminIden.erase(it); // Видаляємо індекс
+        std::cout << "Admin index " << adminId << " removed from adminIden.\n";
+    }
+    else {
+        std::cerr << "Error: Admin index " << adminId << " not found in adminIden!\n";
+    }
+
+    std::cout << "Admin " << adminId << " has been from the file.\n";
+}
+
+/*
+void updateConnectedIndexesAdmin(int adminId) {
+	int size = adminIden.size();
+	int current_payment_id = 0;
+    for (adminId; adminId <= size; adminId++) {
+        Admin admin = getAdmin(adminId);
+        admin.first_payment = current_payment_id;
+        while (current_payment_id != 0) {
+            Payment current_payment =  getPayment(current_payment_id);
+			current_payment.admin_id = adminId-1;
+			current_payment_id = current_payment.next_local_address;
+        }
+    }
+}
+*/
+
+void updateConnectedIndexesAdmin(int adminId) {
+    
+    int size = adminIden.size();
+    Admin admin = getAdmin(adminId);
+    if (admin.num_of_payments > 0) {
+        int changable_current_id = admin.first_payment;
+        int changable_current_id_double = 0;
+        while (changable_current_id != 0)
+        {
+            Payment current_payment = getPayment(changable_current_id);
+            current_payment.admin_id = -1;
+            writePayment(current_payment, changable_current_id - 1);
+            changable_current_id_double = changable_current_id;
+            changable_current_id = current_payment.next_local_address;
+            current_payment.next_local_address = -1;
+            writePayment(current_payment, changable_current_id_double - 1);
+
+        }
+    }
+    
+    // проходимо по всіх адміністраторах, починаючи з adminId
+    for (int i = adminId+1; i <= size; i++) {
+        Admin admin = getAdmin(i);
+        int current_payment_id = admin.first_payment;
+
+        // Проходимо по всіх виплатах адміністратора
+        while (current_payment_id != 0) {
+            // Отримуємо поточну виплату
+            Payment current_payment = getPayment(current_payment_id);
+
+            // Оновлюємо admin_id для поточної виплати
+            current_payment.admin_id =  i-1;
+
+            // Записуємо оновлену виплату назад у файл
+            writePayment(current_payment, current_payment.local_id - 1);
+
+            // Переходимо до наступної виплати
+            current_payment_id = current_payment.next_local_address;
+        }
+    }
+
+        for (auto& garbage : adminGarbage) {
+            if (garbage.next_free > adminId) {
+                garbage.next_free -= 1;
+            }
+        }
+}
+/*
+void updateConnectedIndexesAdmin(int adminId) {
+    int size = adminIden.size();
+    int current_payment_id = 0;
+    // Відкриваємо файл виплат для запису
+    
+    for (int i = adminId; i <= size; i++) {
+        Admin admin = getAdmin(i);
+        //admin.first_payment = current_payment_id;
+		current_payment_id = admin.first_payment;
+        // Відкриваємо файл виплат для запису
+
+        FILE* paymentDB = nullptr;
+        fopen_s(&paymentDB, "payments.bin", "rb+");
+        if (!paymentDB) {
+            std::cerr << "Error: Could not open payments.bin for updating!" << std::endl;
+            return;
+        }
+        while (current_payment_id != 0) {
+            Payment current_payment = getPayment(current_payment_id);
+            current_payment.admin_id = adminId - 1; // оновлюємо admin_id для поточної виплати
+            fseek(paymentDB, (current_payment.local_id - 1) * sizeof(Payment), SEEK_SET); // переміщаємо на адресу виплати
+            fwrite(&current_payment, sizeof(Payment), 1, paymentDB); // записуємо оновлену виплату
+            current_payment_id = current_payment.next_local_address;
+        }
+
+        fclose(paymentDB);
+    }
+}
+*/
+
+void updateIndexes() { //ПОТІМ МОЖЛИВО ВИПРАВИТИ 
+    int newId = 1; // Початковий індекс для відновлення порядку
+
+    // Ітеруємо по вектору і присвоюємо нові індекси
+    for (auto& admin : adminIden) {
+        admin.adminId = newId;
+        newId++;
+    }
+}
+
+void updateAdminAfterCompleteDeletion(int adminId) {
+    updateConnectedIndexesAdmin(adminId);
+	fullyRemoveAdmin(adminId);
+    updateIndexes();
+
+
+
+	std::cout << "Admin " << adminId << " has been fully removed from the file.\n"; //ПОТІМ МОЖЛИВО ВИДАЛИТИ РЯДОК
+}

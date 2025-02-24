@@ -31,3 +31,7 @@ void deleteAdmin(int adminId); //видалення адміна
 void loadIndexesFromFile(const std::string& filename); //завантаження індексів з файлу
 void writeIndexesToFile(const std::string& filename); //запис індексів в файл
 int countAdmins(); //підрахунок адміністраторів (для main)
+void fullyRemoveAdmin(int adminId); //повне видалення адміна
+void updateConnectedIndexesAdmin(int adminId);
+void updateIndexes();
+void updateAdminAfterCompleteDeletion(int adminId);
